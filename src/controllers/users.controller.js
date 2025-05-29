@@ -7,19 +7,29 @@ const {
 } = require('../services/users.service');
 
 const getAllUsers = async (req, res) => {
-  const users = await getAll();
+  try {
+    const users = await getAll();
 
-  res.send(users);
+    res.send(users);
+  } catch (error) {
+    res.status(500).send('Internal server error');
+  }
 };
 
 const getUserById = async (req, res) => {
   const id = Number(req.params.id);
-  const user = await getById(id);
 
-  if (!user) {
-    return res.status(404).send('User not found');
+  try {
+    const user = await getById(id);
+
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    res.send(user);
+  } catch (error) {
+    res.status(500).send('Internal server error');
   }
-  res.send(user);
 };
 
 const addUser = async (req, res) => {
@@ -74,15 +84,18 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
   const id = Number(req.params.id);
 
-  const user = await getById(id);
+  try {
+    const user = await getById(id);
 
-  if (!user) {
-    return res.status(404).send('User not found');
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    await remove(id);
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).send('Internal server error');
   }
-
-  await remove(id);
-
-  res.status(204).send();
 };
 
 module.exports = {
