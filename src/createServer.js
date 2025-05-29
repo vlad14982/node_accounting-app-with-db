@@ -2,8 +2,8 @@
 
 const express = require('express');
 const cors = require('cors');
-const { expensesRouter } = require('./routes/expensesRouter');
-const { usersRouter } = require('./routes/usersRouter');
+const { expensesRouter } = require('./routes/expenses.router');
+const { usersRouter } = require('./routes/users.router');
 
 function createServer() {
   const app = express();

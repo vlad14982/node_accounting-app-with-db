@@ -4,7 +4,7 @@ const {
   update,
   create,
   remove,
-} = require('../services/usersService');
+} = require('../services/users.service');
 
 const getAllUsers = async (req, res) => {
   const users = await getAll();
@@ -29,35 +29,46 @@ const addUser = async (req, res) => {
     return res.status(400).send('Missing required fields');
   }
 
-  const user = await create(name);
+  try {
+    const user = await create(name);
 
-  res.status(201).send(user);
+    res.status(201).send(user);
+  } catch (error) {
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(422).send(error.errors.map((e) => e.message));
+    }
+
+    res.status(500).send('Internal server error');
+  }
 };
 
 const updateUser = async (req, res) => {
   const id = Number(req.params.id);
   const { name } = req.body;
 
-  const user = await getById(id);
+  try {
+    const user = await getById(id);
 
-  if (!user) {
-    return res.status(404).send('User not found');
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    if (!name || typeof name !== 'string') {
+      return res.status(422).send('Invalid name');
+    }
+
+    await update({ id, name });
+
+    const updatedUser = await getById(id);
+
+    res.send(updatedUser);
+  } catch (error) {
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(422).send(error.errors.map((e) => e.message));
+    }
+
+    res.status(500).send('Internal server error');
   }
-
-  if (typeof name !== 'string') {
-    res.sendStatus(422);
-
-    return;
-  }
-
-  await update({
-    id,
-    name,
-  });
-
-  const updatedUser = await getById(id);
-
-  res.send(updatedUser);
 };
 
 const deleteUser = async (req, res) => {

@@ -5,8 +5,8 @@ const {
   update,
   create,
   remove,
-} = require('../services/expensesService');
-const { getById: getUserById } = require('../services/usersService');
+} = require('../services/expenses.service');
+const { getById: getUserById } = require('../services/users.service');
 
 const getAllExpenses = async (req, res) => {
   const { userId, from, to, categories } = req.query;
@@ -53,57 +53,63 @@ const getExpenseById = async (req, res) => {
 const addExpense = async (req, res) => {
   const { userId, spentAt, title, amount, category, note } = req.body;
 
-  if (!userId || !spentAt || !title || !amount) {
-    return res.status(400).send('Missing required fields');
+  try {
+    const user = await getUserById(userId);
+
+    if (!user) {
+      return res.status(400).send('User not found');
+    }
+
+    const expense = await create(
+      userId,
+      spentAt,
+      title,
+      amount,
+      category,
+      note,
+    );
+
+    res.status(201).send(expense);
+  } catch (error) {
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(422).send(error.errors.map((e) => e.message));
+    }
+
+    res.status(500).send('Internal server error');
   }
-
-  const user = await getUserById(userId);
-
-  if (!user) {
-    return res.status(400).send('User not found');
-  }
-
-  const expense = await create(userId, spentAt, title, amount, category, note);
-
-  res.status(201).send(expense);
 };
 
 const updateExpense = async (req, res) => {
   const id = Number(req.params.id);
   const { userId, spentAt, title, amount, category, note } = req.body;
 
-  const expense = await getById(id);
+  try {
+    const expense = await getById(id);
 
-  if (!expense) {
-    return res.status(404).send('Expense not found');
+    if (!expense) {
+      return res.status(404).send('Expense not found');
+    }
+
+    await update({
+      id,
+      userId: userId || expense.userId,
+      spentAt: spentAt || expense.spentAt,
+      title: title || expense.title,
+      amount: amount || expense.amount,
+      category: category || expense.category,
+      note: note || expense.note,
+    });
+
+    const updatedExpense = await getById(id);
+
+    res.send(updatedExpense);
+  } catch (error) {
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(422).send(error.errors.map((e) => e.message));
+    }
+
+    res.status(500).send('Internal server error');
   }
-
-  if (
-    (userId && typeof userId !== 'number') ||
-    (spentAt && typeof spentAt !== 'string') ||
-    (title && typeof title !== 'string') ||
-    (amount && typeof amount !== 'number') ||
-    (category && typeof category !== 'string') ||
-    (note && typeof note !== 'string')
-  ) {
-    res.sendStatus(422);
-
-    return;
-  }
-
-  await update({
-    id,
-    userId: userId || expense.userId,
-    spentAt: spentAt || expense.spentAt,
-    title: title || expense.title,
-    amount: amount || expense.amount,
-    category: category || expense.category,
-    note: note || expense.note,
-  });
-
-  const updatedExpense = await getById(id);
-
-  res.send(updatedExpense);
 };
 
 const deleteExpense = async (req, res) => {
